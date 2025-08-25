@@ -1,0 +1,24 @@
+{
+  "name": "gpt-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prateet-Github/gpt-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Prateet-Github/gpt-app/issues"
+  },
+  "homepage": "https://github.com/Prateet-Github/gpt-app#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
