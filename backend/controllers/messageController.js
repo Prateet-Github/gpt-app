@@ -8,25 +8,21 @@ import axios from "axios";
 // Text message controller
 export const textMessageController = async (req, res) => {
   try {
-    const { chatId, prompt } = req.body;
-    const userId = req.user._id;
+   
+   const userId = req.user._id;
 
-    const chat = await Chat.findOne({ _id: chatId, userId });
-    if (!chat) {
-      return res.status(404).json({ success: false, message: "Chat not found" });
-    }
-
-    // Check credits
+     // Check credits
     if (req.user.credits < 1) {
       return res
         .status(403)
         .json({ success: false, message: "Insufficient credits" });
     }
 
-    // Deduct credits first
-    await User.updateOne({ _id: userId }, { $inc: { credits: -1 } });
+   const { chatId, prompt } = req.body;
 
-    // Push user message
+    const chat = await Chat.findOne({ _id: chatId, userId });
+
+     // Push user message
     chat.messages.push({
       role: "user",
       content: prompt,
@@ -35,28 +31,29 @@ export const textMessageController = async (req, res) => {
     });
 
     // Gemini API call
-    const response = await openai.chat.completions.create({
+    const {choices} = await openai.chat.completions.create({
       model: "gemini-2.0-flash",
       messages: [{ role: "user", content: prompt }],
     });
 
-    const replyText =
-      response.choices?.[0]?.message?.content ||
-      response.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sorry, I couldn’t generate a response.";
-
-    const reply = {
-      role: "assistant",
-      content: replyText,
+      const reply = {
+      ...choices[0].message,
       timestamp: Date.now(),
       isImage: false,
     };
+
+    res.status(200).json({ success: true, reply });
+  
 
     // Push reply
     chat.messages.push(reply);
     await chat.save();
 
-    res.status(200).json({ success: true, reply });
+     // Deduct credits 
+    await User.updateOne({ _id: userId }, { $inc: { credits: -1 } });
+
+
+    
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -65,7 +62,17 @@ export const textMessageController = async (req, res) => {
 // Image message controller
 export const imageMessageController = async (req, res) => {
   try {
+    console.log("=== IMAGE ENDPOINT DEBUG ===");
+    console.log("1. Request body:", req.body);
+    console.log("2. User:", req.user?.username, "Credits:", req.user?.credits);
+
     const userId = req.user._id;
+
+    // Check credits
+    if (req.user.credits < 2) {
+      return res.status(403).json({ success: false, message: "Insufficient credits" });
+    }
+
     const { chatId, prompt, isPublished } = req.body;
 
     const chat = await Chat.findOne({ _id: chatId, userId });
@@ -73,16 +80,7 @@ export const imageMessageController = async (req, res) => {
       return res.status(404).json({ success: false, message: "Chat not found" });
     }
 
-    // Check credits
-    if (req.user.credits < 2) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Insufficient credits" });
-    }
-
-    // Deduct credits first
-    await User.updateOne({ _id: userId }, { $inc: { credits: -2 } });
-
+    console.log("3. Adding user message...");
     // Push user message
     chat.messages.push({
       role: "user",
@@ -91,42 +89,41 @@ export const imageMessageController = async (req, res) => {
       isImage: false,
     });
 
-    // Generate image
-   const encodedPrompt = encodeURIComponent(prompt);
-const generatedImageUrl = `https://ik.imagekit.io/xa7lgsjb8/ik-genimg-prompt/${encodedPrompt}/generated.png?tr=w-800,h-800`;
-
-    const aiImageResponse = await axios.get(generatedImageUrl, {
-      responseType: "arraybuffer",
-    });
-
-    const base64Image = `data:image/png;base64,${Buffer.from(
-      aiImageResponse.data,
-      "binary"
-    ).toString("base64")}`;
-
-    const uploadResponse = await imagekit.upload({
-      file: base64Image,
-      fileName: `gpt-image-${Date.now()}.png`,
-      folder: "quickgpt",
-    });
-
+    console.log("4. Generating image URL...");
+    const encodedPrompt = encodeURIComponent(prompt);
+    const generatedImageUrl = `https://ik.imagekit.io/xa7lgsjb8/ik-genimg-prompt-${encodedPrompt}/quickgpt/${Date.now()}.png?tr=w-800,h-800`;
+    
+    console.log("5. Generated URL:", generatedImageUrl);
+    console.log("6. Creating reply (image will generate on first access)...");
+    
     const reply = {
       role: "assistant",
-      content: uploadResponse.url,
+      content: generatedImageUrl,
       timestamp: Date.now(),
-      isImage: true,
-      isPublished: isPublished || false,
+      isImage: true, 
+      isPublished: isPublished || false
     };
 
+    console.log("7. Saving to database...");
     chat.messages.push(reply);
     await chat.save();
 
+    console.log("8. Deducting credits...");
+    await User.updateOne({ _id: userId }, { $inc: { credits: -2 } });
+
+    console.log("9. Success! Sending response...");
     res.status(200).json({ success: true, reply });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.log("=== ERROR ===");
+    console.log("Error:", error.message);
+
+    res.status(500).json({ 
+      success: false, 
+      message: error?.message || "Server error" 
+    });
   }
 };
-
 // API to get published images
 
 export const getPublishedImages = async (req, res) => {
