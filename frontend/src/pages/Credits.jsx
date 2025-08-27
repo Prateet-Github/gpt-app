@@ -2,14 +2,56 @@ import React, { use } from "react";
 import { useState, useEffect } from "react";
 import { dummyPlans } from "../assets/assets";
 import Loading from "./Loading";
+import { useAppContext } from "../context/AppContext";
 
 const Credits = () => {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const { token, axios, toast } = useAppContext();
+
   const fetchPlans = async () => {
-    setPlans(dummyPlans);
+    try {
+      const { data } = await axios.get("/api/credit/plans", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (data.success) {
+        setPlans(data.plans);
+      } else {
+        toast.error(data.message);
+        // setPlans(dummyPlans); // fallback
+      }
+    } catch (error) {
+      toast.error(error.message);
+      // setPlans(dummyPlans); // fallback
+    }
     setLoading(false);
+  };
+
+  const purchasePlan = async (planId) => {
+    try {
+      const { data } = await axios.post(
+        "/api/credit/purchase",
+        { planId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (data.success) {
+        toast.success("Redirecting to payment...");
+        window.location.href = data.url;
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   useEffect(() => {
@@ -53,7 +95,7 @@ const Credits = () => {
                   ))}
                 </ul>
 
-                <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">
+                <button onClick={()=>purchasePlan(plan._id)} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded">
                   Purchase
                 </button>
               </div>

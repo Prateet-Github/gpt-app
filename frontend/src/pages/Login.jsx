@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useAppContext } from "../context/AppContext";
+import toast from "react-hot-toast";
 
 const Login = () => {
   const [state, setState] = useState("login");
@@ -6,14 +8,21 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const { axios, setToken } = useAppContext();
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (state === "login") {
-      // Handle login logic here
-      console.log("Logging in with:", { email, password });
-    } else {
-      // Handle registration logic here
-      console.log("Registering with:", { name, email, password });
+    const url = state === "login" ? "/api/user/login" : "/api/user/register";
+    try {
+      const { data } = await axios.post(url, {username: name, email, password }); // usrname can cause issue ❌
+      if (data.success) {
+        setToken(data.token);
+        localStorage.setItem("token", data.token);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
     }
   };
 
