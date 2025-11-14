@@ -10,12 +10,6 @@ import { stripeWebHooks } from './controllers/webhooks.js';
 
 dotenv.config();
 
-// // Debug environment variables
-// console.log('🔍 Environment Variables Debug:');
-// console.log('IMAGEKIT_PUBLIC_KEY:', `"${process.env.IMAGEKIT_PUBLIC_KEY}"`);
-// console.log('IMAGEKIT_PRIVATE_KEY:', `"${process.env.IMAGEKIT_PRIVATE_KEY}"`);
-// console.log('IMAGEKIT_URL_ENDPOINT:', `"${process.env.IMAGEKIT_URL_ENDPOINT}"`);
-
 const app = express();
 
 await connectDB();
@@ -23,6 +17,7 @@ await connectDB();
 app.post('/api/stripe', express.raw({type: 'application/json'}),stripeWebHooks)
 
 app.use(cors());
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 5001;
